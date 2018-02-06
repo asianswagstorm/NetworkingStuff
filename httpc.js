@@ -1,9 +1,9 @@
 'use strict';
 
 const net = require('net');
-var http = require('http');
-let url = require('url');
-let fs = require('fs');
+const http = require('http');
+const url = require('url');
+const fs = require('fs'); // file sync
 let urlString = process.argv[process.argv.length - 1];
 let urlObject = url.parse(urlString);
 let theHost = urlObject.host;
@@ -12,6 +12,7 @@ const yargs = require('yargs');
 const argv = yargs.usage('node httpc.js [--host host] [--port port]' )
     .default('host', theHost)
     .default('port', 80)
+    .help('help')
     .argv;
 
 let requestType;
@@ -20,8 +21,6 @@ let verbose = (process.argv[3].toLowerCase() == "-v");
 //arguments args
 
 let qs; //Query Strings
-
-
 
 /*
 *process.argv[0] == "node"
@@ -78,23 +77,13 @@ if (command == 'help') {
 
 if (command == 'get') {
     requestType = "GET";
-
-
-
-
-    if (process.argv[3]== "-v") {
-        console.log('Verbose\n');
-    }
-
     getRequest();
 
-
-    /*else{
-        console.log('Invalid Command');
+    if (process.argv.length > 5){
+        console.log('Invalid Command Get can only be non-verbose or verbose');
         InvalidParameterError();
-    }*/
+    }
 }
-
         const client = net.createConnection({host:theHost , port:80});
 
         client.on('error', err => {
@@ -108,15 +97,52 @@ if (command == 'get') {
             process.exit(0);
         }
 
-
+        //GET
         function getRequest(){
-            let UserAgent = "User-Agent: Concordia-HTTP/1.0\n"
+            let UserAgent = "Concordia-HTTP/1.0"
             let request = http.get(urlString, function(response){
+                if (process.argv[3]== "-v"){
+                    var FullDate = new Date();
+                    console.log("\nHTTP/1.1 " + response.statusCode + ' OK');
+                    console.log('Server: ' + response.server);
+                    console.log('Date: '+ FullDate.getDate() + " " + FullDate.getFullYear()+ " " + FullDate.getTime());
+                    console.log('Content-Type: ' + response.type);
+                    console.log('Content-Length: '+ response.length);
+                    console.log('Connection: ');
+                    console.log('Access-Control-Allow-Origin: ');
+                    console.log('Access-Control-Allow-Credentials: ');
+                }
+                    let body = "";
+                     let buffToString , stringToJSON;
+                    response.on('data', function(stuff){
+                    console.log('\nOutput: \n ');
 
-                response.on('data', function(chunk){
-                    console.log('Output: \n ' + UserAgent + chunk);
+                            buffToString = stuff.toString(),
+                            stringToJSON = JSON.parse(buffToString);
+                            stringToJSON.headers.UserAgent = UserAgent;
+
+                          let buf = Buffer.from(JSON.stringify(stringToJSON));
+                          body += buf;
                 });
+                    response.on("end", function(){
+                        body =  body.replace(/,/g, (',\n  '));
+                        body =  body.replace(/{/g, ('{\n  '));
+                        body =  body.replace(/}/g, '\n}');
+                        body =  body.replace(/},/g, ('  }, '));
+
+                        console.log(body);
+                    });
             });
+        }
+
+        function postRequest(){
+
+              let request = http.post(urlString, function(response){
+
+                  response.on('data', function(chunk){
+                    console.log('Output: \n ' + chunk);
+                 });
+             });
         }
 
 
@@ -131,7 +157,6 @@ if (command == 'post') {
     let UserAgent = "User-Agent:Concordia-HTTP/1.0\n";
     let isGet, type;
 */
-//GET
 
 
     /*

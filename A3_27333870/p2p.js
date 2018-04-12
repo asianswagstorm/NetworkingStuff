@@ -1,29 +1,44 @@
 /**
- * Created by Andy on 2018-04-03.
+ * Created by Andy And Piratheeban on 2018-04-03.
  */
 'use strict';
 
 let PORT = 33333;
-let BROADCAST = '255.255.255.255';
+let BROADCAST = '255.255.255.255'; // Broadcast is the IP
 
 let dgram = require('dgram');
-let server = dgram.createSocket('udp4');
-let stdin = process.openStdin();
+let server = dgram.createSocket('udp4');// the UDP socket
 
 let isFirst = true;
+let isPrivate;
 let name = "Guest";
 let connectedUsers = [];
+let privateUser = "";
+let privateReceiver = [];
+let sentName , sentCommand, sentMsg , splitMsg , sentReceiver;
 
 server.on('listening', function () {
-    var address = server.address();
+    let address = server.address();
     console.log("Hello %s! Enter your name:", name);
 });
 
 server.on('message', function (message, remote) {
-    let splitMsg = message.toString().split("\n");
-    let sentName = splitMsg[0].split(":")[1];
-    let sentCommand = splitMsg[1].split(":")[1];
-    let sentMsg = splitMsg[2].split(":")[1];
+    splitMsg = message.toString().split("\n");
+
+    if(isPrivate === true){
+        sentReceiver = splitMsg[0].split(":")[1];
+        sentName = splitMsg[1].split(":")[1];
+        sentCommand = splitMsg[2].split(":")[1];
+        sentMsg = splitMsg[3].split(":")[1];
+        isPrivate = false;
+    }
+
+    else {
+        sentName = splitMsg[0].split(":")[1];
+        sentCommand = splitMsg[1].split(":")[1];
+        sentMsg = splitMsg[2].split(":")[1];
+    }
+
     if (sentCommand === "TALK") {
         console.log("%s [%s]: %s", new Date(), sentName, sentMsg);
     } else if (sentCommand === "JOIN") {
@@ -34,12 +49,19 @@ server.on('message', function (message, remote) {
         if (!connectedUsers.contains(sentName)) {
             connectedUsers.push(sentName);
         }
-    } else if (sentCommand == "LEAVE") {
+    } else if (sentCommand === "LEAVE") {
         console.log("%s %s left!", new Date(), sentName);
         remove(connectedUsers, sentName);
         if (sentName === name) {
             sendMessage("", "QUIT");
         }
+    } else if (sentCommand === "PRIVATE" ) {
+
+        if (sentName != name && sentReceiver === name ){
+            console.log("%s [%s] (Private): %s", new Date(), sentName, sentMsg);
+        }
+   
+
     } else if (sentCommand == "PING") {
         if (!connectedUsers.contains(sentName)) {
             connectedUsers.push(sentName);
@@ -51,32 +73,54 @@ server.bind(PORT, "", function () {
     server.setBroadcast(true);
 });
 
-stdin.addListener("data", function (d) {
-    if (isFirst) {
-        name = d.toString().trim();
-        console.log("Welcome to the chat %s!", name);
-        isFirst = false;
-        sendMessage("", "JOIN");
-    } else if (d.toString().trim().toLowerCase() === "/leave") {
-        sendMessage("", "LEAVE");
-    } else if (d.toString().trim().toLowerCase() === "/who") {
-        sendMessage("", "WHO");
-    } else {
-        sendMessage(d, "TALK");
+process.openStdin().addListener("data", function (d) {
+        if (isFirst) {
+            name = d.toString().trim();
+            console.log("Welcome to the chat %s!", name);
+            isFirst = false;
+            sendMessage("", "JOIN");
+        } else if (d.toString().trim().toLowerCase() === "/leave") {
+            sendMessage("", "LEAVE");
+        } else if (d.toString().trim().toLowerCase() === "/who") {
+            sendMessage("", "WHO");
+        }
+        else if (d.toString().split(" ")[0].toLowerCase() === "/private") {
+            privateUser = d.toString().split(" ")[1].trim();
+            isPrivate = true;
+            console.log("Private message to %s:", privateUser);
+        }
+
+        else if (isPrivate === true){
+            privateReceiver.push(privateUser);
+            sendMessage(d, "PRIVATE");
+
+        }
+        else
+            sendMessage(d, "TALK");
     }
-});
+);
 
 function sendMessage(input, command) {
+    let message = "";
     if (command === "QUIT") {
         console.log("Have a Beautiful Day!");
         process.exit(0);
     } else if (command === "WHO") {
         console.log("%s Connected Users: %s", new Date(), connectedUsers);
-    } else {
-        let message = "user:" + name + "\ncommand:" + command + "\nmessage:" + input.toString().trim() + "\n\n";
+    }
+
+    else{
+        if (command === "Private"){
+            message ="privateReceiver:" + privateReceiver[0] +  "\nuser:" + name + "\ncommand:" + command + "\nmessage:" + input.toString().trim() + "\n\n";
+        }
+        else
+            message ="user:" + name + "\ncommand:" + command + "\nmessage:" + input.toString().trim() + "\n\n";
+
         server.send(message, 0, message.length, PORT, BROADCAST);
     }
+
 }
+
 
 Array.prototype.contains = function (needle) {
     for (let i in this) {

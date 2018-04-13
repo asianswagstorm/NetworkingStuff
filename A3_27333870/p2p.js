@@ -14,8 +14,7 @@ let isPrivate;
 let name = "Guest";
 let connectedUsers = [];
 let privateUser = "";
-let privateReceiver = [];
-let sentName , sentCommand, sentMsg , splitMsg , sentReceiver;
+let sentReceiver = "";
 
 server.on('listening', function () {
     let address = server.address();
@@ -23,49 +22,57 @@ server.on('listening', function () {
 });
 
 server.on('message', function (message, remote) {
-    splitMsg = message.toString().split("\n");
+    let splitMsg = message.toString().split("\n");
 
-    if(isPrivate === true){
-        sentReceiver = splitMsg[0].split(":")[1];
+    let sentName = splitMsg[0].split(":")[1];
+    let sentCommand = splitMsg[1].split(":")[1];
+    let sentMsg = splitMsg[2].split(":")[1];
+
+    if (splitMsg[0].split(":")[0].toString() === "privateReceiver") {
+        isPrivate = false;
+        sentReceiver = splitMsg[0].split(":")[1].toString();
         sentName = splitMsg[1].split(":")[1];
         sentCommand = splitMsg[2].split(":")[1];
         sentMsg = splitMsg[3].split(":")[1];
-        isPrivate = false;
     }
 
-    else {
-        sentName = splitMsg[0].split(":")[1];
-        sentCommand = splitMsg[1].split(":")[1];
-        sentMsg = splitMsg[2].split(":")[1];
-    }
+    switch (sentCommand) {
+        case "TALK":
+            console.log("%s [%s]: %s", new Date(), sentName, sentMsg);
+            break;
 
-    if (sentCommand === "TALK") {
-        console.log("%s [%s]: %s", new Date(), sentName, sentMsg);
-    } else if (sentCommand === "JOIN") {
-        console.log("%s %s joined!", new Date(), sentName);
-        if (name !== "Guest") {
-            sendMessage("", "PING");
-        }
-        if (!connectedUsers.contains(sentName)) {
-            connectedUsers.push(sentName);
-        }
-    } else if (sentCommand === "LEAVE") {
-        console.log("%s %s left!", new Date(), sentName);
-        remove(connectedUsers, sentName);
-        if (sentName === name) {
-            sendMessage("", "QUIT");
-        }
-    } else if (sentCommand === "PRIVATE" ) {
+        case "PRIVATE":
+            if (sentReceiver === name && sentName !== name) {
+                console.log("%s [%s] (Private): %s", new Date(), sentName, sentMsg);
+            }
+            break;
+        case "JOIN":
+            console.log("%s %s joined!", new Date(), sentName);
+            if (name !== "Guest") {
+                sendMessage("", "PING");
+            }
+            if (!connectedUsers.contains(sentName)) {
+                connectedUsers.push(sentName);
+            }
+            break;
 
-        if (sentName != name && sentReceiver === name ){
-            console.log("%s [%s] (Private): %s", new Date(), sentName, sentMsg);
-        }
-   
+        case "LEAVE":
+            console.log("%s %s left!", new Date(), sentName);
+            remove(connectedUsers, sentName);
+            if (sentName === name) {
+                sendMessage("", "QUIT");
+            }
+            break;
 
-    } else if (sentCommand == "PING") {
-        if (!connectedUsers.contains(sentName)) {
-            connectedUsers.push(sentName);
-        }
+        case "PING":
+            if (!connectedUsers.contains(sentName)) {
+                connectedUsers.push(sentName);
+            }
+            break;
+
+        default:
+            return "";
+
     }
 });
 
@@ -74,53 +81,45 @@ server.bind(PORT, "", function () {
 });
 
 process.openStdin().addListener("data", function (d) {
-        if (isFirst) {
-            name = d.toString().trim();
-            console.log("Welcome to the chat %s!", name);
-            isFirst = false;
-            sendMessage("", "JOIN");
-        } else if (d.toString().trim().toLowerCase() === "/leave") {
-            sendMessage("", "LEAVE");
-        } else if (d.toString().trim().toLowerCase() === "/who") {
-            sendMessage("", "WHO");
-        }
-        else if (d.toString().split(" ")[0].toLowerCase() === "/private") {
-            privateUser = d.toString().split(" ")[1].trim();
-            isPrivate = true;
-            console.log("Private message to %s:", privateUser);
-        }
-
-        else if (isPrivate === true){
-            privateReceiver.push(privateUser);
+    if (isFirst) {
+        name = d.toString().trim();
+        console.log("Welcome to the chat %s!", name);
+        isFirst = false;
+        sendMessage("", "JOIN");
+    } else if (d.toString().trim().toLowerCase() === "/leave") {
+        sendMessage("", "LEAVE");
+    } else if (d.toString().trim().toLowerCase() === "/who") {
+        sendMessage("", "WHO");
+    } else if (d.toString().split(" ")[0].toLowerCase() === "/private") {
+        isPrivate = true;
+        privateUser = d.toString().split(" ")[1].trim();
+        console.log("Private message to %s:", privateUser);
+    } else {
+        if (isPrivate) {
             sendMessage(d, "PRIVATE");
-
-        }
-        else
+        } else {
             sendMessage(d, "TALK");
+        }
     }
-);
+});
 
 function sendMessage(input, command) {
-    let message = "";
     if (command === "QUIT") {
         console.log("Have a Beautiful Day!");
         process.exit(0);
     } else if (command === "WHO") {
         console.log("%s Connected Users: %s", new Date(), connectedUsers);
-    }
-
-    else{
-        if (command === "Private"){
-            message ="privateReceiver:" + privateReceiver[0] +  "\nuser:" + name + "\ncommand:" + command + "\nmessage:" + input.toString().trim() + "\n\n";
+    } else {
+        let message = "";
+        if (command === "PRIVATE") {
+            message = "privateReceiver:" + privateUser + "\nuser:" + name + "\ncommand:" + command + "\nmessage:" + input.toString().trim() + "\n\n";
+        } else {
+            message = "user:" + name + "\ncommand:" + command + "\nmessage:" + input.toString().trim() + "\n\n";
         }
-        else
-            message ="user:" + name + "\ncommand:" + command + "\nmessage:" + input.toString().trim() + "\n\n";
 
         server.send(message, 0, message.length, PORT, BROADCAST);
     }
-
 }
-
 
 Array.prototype.contains = function (needle) {
     for (let i in this) {

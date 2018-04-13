@@ -1,0 +1,7 @@
+Use Docker Quickstart Terminal
+Go into the directory the file is stored in.
+cd 'C:\Users\YourUser\Documents\networking'
+docker run --rm -it -v $PWD:/run -w /run -u $UID mc2labs/nodejs /bin/bash
+node p2p.js
+
+

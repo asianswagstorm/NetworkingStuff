@@ -93,9 +93,12 @@ process.openStdin().addListener("data", function (d) {
     } else if (d.toString().split(" ")[0].toLowerCase() === "/private") {
         isPrivate = true;
         privateUser = d.toString().split(" ")[1].trim();
-        console.log("Private message to %s:", privateUser);
+        if (!connectedUsers.contains(privateUser))
+            console.log("%s doesn't exist in the chat!", privateUser);
+        else
+            console.log("Private message to %s:", privateUser);
     } else {
-        if (isPrivate) {
+        if (isPrivate && connectedUsers.contains(privateUser)) {
             sendMessage(d, "PRIVATE");
         } else {
             sendMessage(d, "TALK");

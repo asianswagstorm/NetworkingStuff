@@ -1,0 +1,20 @@
+{
+  "name": "a1_27333870",
+  "version": "1.0.0",
+  "description": "Assignment 1 get post request for comp445 by Nguyen Andy 27333870",
+  "main": "httpc.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {},
+  "author": "Nguyen Andy",
+  "license": "ISC",
+  "preferGlobal": true,
+  "bin": {
+    "httpc": "httpc.js"
+  },
+  "dependencies": {
+    "prettyjson": "^1.2.1",
+    "yargs": "^11.0.0"
+  }
+}

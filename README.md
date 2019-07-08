@@ -26,6 +26,8 @@ A3: p2p.js
 Install Docker Quickstart Terminal 
 Run on 2 or more docker container not git bash (timezone issues)
 
+Calling docker images:
+
 docker run -it --rm --name my-running-script -v "$PWD":/usr/src/app -w /usr/src/app node:8 node p2p.js
 
 docker run --rm -it -v $PWD:/run -w /run -u $UID mc2labs/nodejs /bin/bash 
